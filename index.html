@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penanaman Pohon Pintar - Sistem Monitoring Kebutuhan Penghijauan</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { height: 70vh; width: 100%; z-index: 1; } /* Biar map tampil */
+        .legend { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .legend-item { display: flex; align-items: center; margin: 8px 0; }
+        .legend-color { width: 20px; height: 20px; border-radius: 4px; margin-right: 10px; }
+        .gradient-legend { height: 150px; width: 30px; background: linear-gradient(to top, #10b981, #f59e0b, #ef4444); border-radius: 8px; margin: 10px auto; }
+        .analysis-panel { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding: 1.5rem; margin-top: 1.5rem; }
+        .stat-card { background: #f9fafb; padding: 1rem; border-radius: 8px; text-align: center; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-green-600 to-emerald-700 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 0 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 0 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"></path></svg>
+                    </div>
+                    <h1 class="text-2xl font-bold">Penanaman Pohon Pintar</h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Map Section -->
+    <section id="map-section" class="py-12 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">Peta Kebutuhan Penanaman Pohon</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Legend -->
+                <div class="lg:col-span-1">
+                    <div class="legend sticky top-4">
+                        <h3 class="text-xl font-semibold mb-4">🏷️ Legenda Zona</h3>
+                        <div class="gradient-legend"></div>
+                        <div class="text-center text-sm text-gray-600 mb-4"><div>Rendah → Tinggi</div><div>Kebutuhan Penanaman</div></div>
+                        <div class="legend-item"><div class="legend-color bg-green-500"></div><span>0-33%: Aman</span></div>
+                        <div class="legend-item"><div class="legend-color bg-yellow-400"></div><span>34-66%: Cukup Membutuhkan</span></div>
+                        <div class="legend-item"><div class="legend-color bg-red-500"></div><span>67-100%: Sangat Membutuhkan</span></div>
+                    </div>
+                </div>
+                <!-- Map + Panel -->
+                <div class="lg:col-span-3">
+                    <div id="map"></div>
+                    <!-- Panel Analisis -->
+                    <div id="analysis-panel" class="analysis-panel hidden">
+                        <h3 class="text-xl font-bold mb-4">📊 Hasil Analisis Area</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="stat-card">
+                                <h4 class="font-semibold">Jumlah Titik</h4>
+                                <p id="stat-points" class="text-2xl font-bold text-green-600">-</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4 class="font-semibold">Rata-rata Intensitas</h4>
+                                <p id="stat-avg" class="text-2xl font-bold text-yellow-600">-</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4 class="font-semibold">Kategori</h4>
+                                <p id="stat-category" class="text-2xl font-bold text-red-600">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+    <script>
+        let map, drawnItems, heatLayer;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            map = L.map('map').setView([-2.5489, 118.0149], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            let drawControl = new L.Control.Draw({
+                draw: { polygon: true, rectangle: true, circle: false, marker: false, polyline: false, circlemarker: false },
+                edit: { featureGroup: drawnItems, remove: true }
+            });
+            map.addControl(drawControl);
+
+            // Event saat gambar area baru
+            map.on(L.Draw.Event.CREATED, function (e) {
+                let layer = e.layer;
+                drawnItems.addLayer(layer);
+
+                let bounds = layer.getBounds();
+                let points = generateRandomData(bounds, 150);
+
+                if (heatLayer) { map.removeLayer(heatLayer); }
+                heatLayer = L.heatLayer(points, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 10,
+                    gradient: { 0.2: "green", 0.5: "yellow", 0.8: "orange", 1.0: "red" }
+                }).addTo(map);
+
+                updateAnalysis(points);
+                map.fitBounds(bounds);
+            });
+
+            // Event saat hapus area
+            map.on(L.Draw.Event.DELETED, function () {
+                if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+                resetAnalysis();
+            });
+        });
+
+        function generateRandomData(bounds, count) {
+            let points = [];
+            for (let i = 0; i < count; i++) {
+                let lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+                let lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+                let intensity = Math.random();
+                points.push([lat, lng, intensity]);
+            }
+            return points;
+        }
+
+        function updateAnalysis(points) {
+            let total = points.length;
+            let avg = points.reduce((sum, p) => sum + p[2], 0) / total;
+
+            let category = "Aman";
+            if (avg > 0.66) category = "Sangat Membutuhkan";
+            else if (avg > 0.33) category = "Cukup Membutuhkan";
+
+            document.getElementById("analysis-panel").classList.remove("hidden");
+            document.getElementById("stat-points").textContent = total;
+            document.getElementById("stat-avg").textContent = (avg * 100).toFixed(1) + "%";
+            document.getElementById("stat-category").textContent = category;
+        }
+
+        function resetAnalysis() {
+            document.getElementById("analysis-panel").classList.add("hidden");
+            document.getElementById("stat-points").textContent = "-";
+            document.getElementById("stat-avg").textContent = "-";
+            document.getElementById("stat-category").textContent = "-";
+        }
+    </script>
+</body>
+</html>
