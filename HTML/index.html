@@ -10,18 +10,14 @@
     <!-- Leaflet Draw CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
 
+    <link rel="stylesheet" href="/CSS/style.css">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #map { height: 70vh; width: 100%; z-index: 1; } /* Biar map tampil */
-        .legend { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-        .legend-item { display: flex; align-items: center; margin: 8px 0; }
-        .legend-color { width: 20px; height: 20px; border-radius: 4px; margin-right: 10px; }
-        .gradient-legend { height: 150px; width: 30px; background: linear-gradient(to top, #10b981, #f59e0b, #ef4444); border-radius: 8px; margin: 10px auto; }
-        .analysis-panel { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding: 1.5rem; margin-top: 1.5rem; }
-        .stat-card { background: #f9fafb; padding: 1rem; border-radius: 8px; text-align: center; }
+        
+
     </style>
 </head>
 <body class="bg-gray-50">
@@ -33,11 +29,18 @@
                     <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
                         <svg class="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 0 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 0 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"></path></svg>
                     </div>
-                    <h1 class="text-2xl font-bold">Penanaman Pohon Pintar</h1>
+                    <h1 class="text-3xl font-bold">Smart Tree Planter</h1>
                 </div>
             </div>
         </div>
     </header>
+
+    <div class="subheader">
+    <h2>Analisis Visual Area</h2>
+    <p>Sistem ini membantu memantau area menggunakan peta interaktif dengan fitur analisis gambar.</p>
+    <img src="/images/Menanam Pohon.jpg" alt="Ilustrasi Analisis" class="subheader-img">
+  </div>
+</header>
 
     <!-- Map Section -->
     <section id="map-section" class="py-12 bg-white">
@@ -81,87 +84,17 @@
         </div>
     </section>
 
+    <footer>
+  <p>&copy; 2025 Sistem Pemantauan Area | Dibuat untuk tujuan demonstrasi</p>
+</footer>
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
-    <script>
-        let map, drawnItems, heatLayer;
-
-        document.addEventListener('DOMContentLoaded', function() {
-            map = L.map('map').setView([-2.5489, 118.0149], 5);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            drawnItems = new L.FeatureGroup();
-            map.addLayer(drawnItems);
-
-            let drawControl = new L.Control.Draw({
-                draw: { polygon: true, rectangle: true, circle: false, marker: false, polyline: false, circlemarker: false },
-                edit: { featureGroup: drawnItems, remove: true }
-            });
-            map.addControl(drawControl);
-
-            // Event saat gambar area baru
-            map.on(L.Draw.Event.CREATED, function (e) {
-                let layer = e.layer;
-                drawnItems.addLayer(layer);
-
-                let bounds = layer.getBounds();
-                let points = generateRandomData(bounds, 150);
-
-                if (heatLayer) { map.removeLayer(heatLayer); }
-                heatLayer = L.heatLayer(points, {
-                    radius: 25,
-                    blur: 15,
-                    maxZoom: 10,
-                    gradient: { 0.2: "green", 0.5: "yellow", 0.8: "orange", 1.0: "red" }
-                }).addTo(map);
-
-                updateAnalysis(points);
-                map.fitBounds(bounds);
-            });
-
-            // Event saat hapus area
-            map.on(L.Draw.Event.DELETED, function () {
-                if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
-                resetAnalysis();
-            });
-        });
-
-        function generateRandomData(bounds, count) {
-            let points = [];
-            for (let i = 0; i < count; i++) {
-                let lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-                let lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
-                let intensity = Math.random();
-                points.push([lat, lng, intensity]);
-            }
-            return points;
-        }
-
-        function updateAnalysis(points) {
-            let total = points.length;
-            let avg = points.reduce((sum, p) => sum + p[2], 0) / total;
-
-            let category = "Aman";
-            if (avg > 0.66) category = "Sangat Membutuhkan";
-            else if (avg > 0.33) category = "Cukup Membutuhkan";
-
-            document.getElementById("analysis-panel").classList.remove("hidden");
-            document.getElementById("stat-points").textContent = total;
-            document.getElementById("stat-avg").textContent = (avg * 100).toFixed(1) + "%";
-            document.getElementById("stat-category").textContent = category;
-        }
-
-        function resetAnalysis() {
-            document.getElementById("analysis-panel").classList.add("hidden");
-            document.getElementById("stat-points").textContent = "-";
-            document.getElementById("stat-avg").textContent = "-";
-            document.getElementById("stat-category").textContent = "-";
-        }
+    <script src="/JS/script.js">
+        
     </script>
 </body>
 </html>

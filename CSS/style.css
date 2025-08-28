@@ -1,0 +1,84 @@
+body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+
+        #map { 
+            height: 70vh; 
+            width: 100%; 
+            z-index: 1; 
+        } /* Biar map tampil */
+
+        .legend { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); 
+        }
+        .legend-item { 
+            display: flex; 
+            align-items: center; 
+            margin: 8px 0; 
+        }
+        .legend-color { 
+            width: 20px; 
+            height: 20px; 
+            border-radius: 4px; 
+            margin-right: 10px; 
+        }
+        .gradient-legend { 
+            height: 150px; 
+            width: 30px; 
+            background: linear-gradient(to top, #10b981, #f59e0b, #ef4444); 
+            border-radius: 8px; margin: 10px auto; 
+        }
+        .analysis-panel { 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            padding: 1.5rem; 
+            margin-top: 1.5rem; 
+        }
+        .stat-card { 
+            background: #f9fafb; 
+            padding: 1rem; 
+            border-radius: 8px; 
+            text-align: center; }
+
+        .subheader {
+            text-align: center;
+            padding: 20px;
+            background-color: rgb(224, 252, 236);
+        }
+
+        .subheader h2 {
+          font-size: 2em;
+          margin-bottom: 5px;
+          font-weight: bolder;
+        }
+
+        .subheader p {
+          font-size: 1em;
+          color: #555;
+        }
+
+        .subheader-img {
+            margin-inline: auto;
+          margin-block: 20px;
+          width: 500px;
+          max-width: 100%;
+          border-radius: 10px;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        footer {
+
+          margin-top: 20px;
+          padding: 15px;
+          text-align: center;
+          background: #1f302d;
+          border-top: 1px solid #ddd;
+          font-size: 0.9em;
+          color: #d0e1dd;
+        }
