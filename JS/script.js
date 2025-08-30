@@ -1,75 +1,120 @@
 let map, drawnItems, heatLayer;
+let canvas = document.createElement("canvas");
+canvas.width = 256; 
+canvas.height = 256;
+let ctx = canvas.getContext("2d");
 
-        document.addEventListener('DOMContentLoaded', function() {
-            map = L.map('map').setView([-2.5489, 118.0149], 5);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+document.addEventListener('DOMContentLoaded', function () {
+    map = L.map('map').setView([-2.5489, 118.0149], 5);
 
-            drawnItems = new L.FeatureGroup();
-            map.addLayer(drawnItems);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-            let drawControl = new L.Control.Draw({
-                draw: { polygon: true, rectangle: true, circle: false, marker: false, polyline: false, circlemarker: false },
-                edit: { featureGroup: drawnItems, remove: true }
-            });
-            map.addControl(drawControl);
+    // NDVI overlay dari SentinelHub
+    let ndviLayer = L.tileLayer.wms("https://services.sentinel-hub.com/ogc/wms/da321e10-4c2f-4ec4-a2ea-8c977aecf7a2", {
+        layers: "NDVI",
+        format: "image/png",
+        transparent: true,
+        attribution: "SentinelHub"
+    }).addTo(map);
 
-            // Event saat gambar area baru
-            map.on(L.Draw.Event.CREATED, function (e) {
-                let layer = e.layer;
-                drawnItems.addLayer(layer);
+    drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
 
-                let bounds = layer.getBounds();
-                let points = generateRandomData(bounds, 150);
+    let drawControl = new L.Control.Draw({
+        draw: { polygon: true, rectangle: true, circle: false, marker: false, polyline: false, circlemarker: false },
+        edit: { featureGroup: drawnItems, remove: true }
+    });
+    map.addControl(drawControl);
 
-                if (heatLayer) { map.removeLayer(heatLayer); }
-                heatLayer = L.heatLayer(points, {
-                    radius: 25,
-                    blur: 15,
-                    maxZoom: 10,
-                    gradient: { 0.2: "green", 0.5: "yellow", 0.8: "orange", 1.0: "red" }
-                }).addTo(map);
+    // Event saat gambar area baru
+    map.on(L.Draw.Event.CREATED, async function (e) {
+        let layer = e.layer;
+        drawnItems.addLayer(layer);
 
-                updateAnalysis(points);
-                map.fitBounds(bounds);
-            });
+        let bounds = layer.getBounds();
+        let points = await sampleFromNDVI(bounds, 150);
 
-            // Event saat hapus area
-            map.on(L.Draw.Event.DELETED, function () {
-                if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
-                resetAnalysis();
-            });
-        });
+        if (heatLayer) { map.removeLayer(heatLayer); }
+        heatLayer = L.heatLayer(points, {
+            radius: 25,
+            blur: 15,
+            maxZoom: 10,
+            gradient: { 0.2: "green", 0.5: "yellow", 0.8: "orange", 1.0: "red" }
+        }).addTo(map);
 
-        function generateRandomData(bounds, count) {
-            let points = [];
-            for (let i = 0; i < count; i++) {
-                let lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-                let lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
-                let intensity = Math.random();
-                points.push([lat, lng, intensity]);
-            }
-            return points;
-        }
+        updateAnalysis(points);
+        map.fitBounds(bounds);
+    });
 
-        function updateAnalysis(points) {
-            let total = points.length;
-            let avg = points.reduce((sum, p) => sum + p[2], 0) / total;
+    // Event saat hapus area
+    map.on(L.Draw.Event.DELETED, function () {
+        if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+        resetAnalysis();
+    });
+});
 
-            let category = "Aman";
-            if (avg > 0.66) category = "Sangat Membutuhkan";
-            else if (avg > 0.33) category = "Cukup Membutuhkan";
+// 🔥 Ambil nilai NDVI dari tile image
+// 🔥 Ambil nilai NDVI dari tile image
+async function sampleFromNDVI(bounds, count) {
+    let points = [];
 
-            document.getElementById("analysis-panel").classList.remove("hidden");
-            document.getElementById("stat-points").textContent = total;
-            document.getElementById("stat-avg").textContent = (avg * 100).toFixed(1) + "%";
-            document.getElementById("stat-category").textContent = category;
-        }
+    let url = `https://tile.openstreetmap.org/10/512/512.png`; 
+    // 👉 sementara pakai OSM tile aja biar gak kosong (dummy)
 
-        function resetAnalysis() {
-            document.getElementById("analysis-panel").classList.add("hidden");
-            document.getElementById("stat-points").textContent = "-";
-            document.getElementById("stat-avg").textContent = "-";
-            document.getElementById("stat-category").textContent = "-";
-        }
+    let img = new Image();
+    img.crossOrigin = "Anonymous";
+
+    await new Promise((resolve) => {
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0, 256, 256);
+            resolve();
+        };
+        img.src = url;
+    });
+
+    for (let i = 0; i < count; i++) {
+        let lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+        let lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+
+        let x = Math.floor(((lng - bounds.getWest()) / (bounds.getEast() - bounds.getWest())) * 256);
+        let y = Math.floor((1 - (lat - bounds.getSouth()) / (bounds.getNorth() - bounds.getSouth())) * 256);
+
+        let pixel = ctx.getImageData(x, y, 1, 1).data;
+        let r = pixel[0], g = pixel[1], b = pixel[2];
+
+        let intensity = 0.5;
+        if (g > r && g > b) intensity = 0.8; // hijau dominan
+        else if (r > g) intensity = 0.2;    // merah dominan
+        else intensity = 0.5;               // lain-lain
+
+        points.push([lat, lng, intensity]);
+    }
+
+    return points;
+}
+
+
+
+function updateAnalysis(points) {
+    let total = points.length;
+    let avg = points.reduce((sum, p) => sum + p[2], 0) / total;
+
+    let category = "Aman";
+    if (avg > 0.66) category = "Sangat Membutuhkan";
+    else if (avg > 0.33) category = "Cukup Membutuhkan";
+
+    document.getElementById("analysis-panel").classList.remove("hidden");
+    document.getElementById("stat-points").textContent = total;
+    document.getElementById("stat-avg").textContent = (avg * 100).toFixed(1) + "%";
+    document.getElementById("stat-category").textContent = category;
+}
+
+function resetAnalysis() {
+    document.getElementById("analysis-panel").classList.add("hidden");
+    document.getElementById("stat-points").textContent = "-";
+    document.getElementById("stat-avg").textContent = "-";
+    document.getElementById("stat-category").textContent = "-";
+}
+
