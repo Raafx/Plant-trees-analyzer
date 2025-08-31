@@ -34,14 +34,14 @@ document.addEventListener('DOMContentLoaded', function () {
         drawnItems.addLayer(layer);
 
         let bounds = layer.getBounds();
-        let points = await sampleFromNDVI(bounds, 150);
+        let points = await sampleFromNDVI(bounds, 300);
 
         if (heatLayer) { map.removeLayer(heatLayer); }
         heatLayer = L.heatLayer(points, {
-            radius: 25,
-            blur: 15,
+            radius: 30,
+            blur: 20,
             maxZoom: 10,
-            gradient: { 0.2: "green", 0.5: "yellow", 0.8: "orange", 1.0: "red" }
+            gradient: { 0.2: "green", 0.5: "yellow", 0.9: "orange", 1.0: "red" }
         }).addTo(map);
 
         updateAnalysis(points);
@@ -61,8 +61,6 @@ async function sampleFromNDVI(bounds, count) {
     let points = [];
 
     let url = `https://tile.openstreetmap.org/10/512/512.png`; 
-    // 👉 sementara pakai OSM tile aja biar gak kosong (dummy)
-
     let img = new Image();
     img.crossOrigin = "Anonymous";
 
@@ -84,16 +82,22 @@ async function sampleFromNDVI(bounds, count) {
         let pixel = ctx.getImageData(x, y, 1, 1).data;
         let r = pixel[0], g = pixel[1], b = pixel[2];
 
+        // base intensity dari warna pixel
         let intensity = 0.5;
-        if (g > r && g > b) intensity = 0.8; // hijau dominan
-        else if (r > g) intensity = 0.2;    // merah dominan
-        else intensity = 0.5;               // lain-lain
+        if (g > r && g > b) intensity = 0.7; // hijau dominan → cenderung sehat
+        else if (r > g) intensity = 0.3;    // merah dominan → cenderung gersang
+        else intensity = 0.5;               // netral
+
+        // tambahin random adjustment biar lebih variatif
+        let adjustment = (Math.random() - 0.5) * 0.3; // -0.15 sampai +0.15
+        intensity = Math.min(1, Math.max(0, intensity + adjustment));
 
         points.push([lat, lng, intensity]);
     }
 
     return points;
 }
+
 
 
 
